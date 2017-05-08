@@ -8,65 +8,98 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
 import CB_Global
 import uiBase
-import classesmanager
+
+import zk_classesmanager
+import dwsy2_classesmanager
+import ks_classesmanager
+
 
 
 app = wx.App()
 win = wx.Frame(None,title='DUTshadow',size=(1300,750))
 bkg = wx.Panel(win)
 
-scroll = wx.ScrolledWindow(bkg)
 
 
-zkname = '正选课程'
-zk_hbox = uiBase._ui_addClass(bkg,zkname,'教务账号: ','教务密码: ')
+#zk_hbox = uiBase._ui_addClass(bkg,uiBase.zkname,'教务账号: ','教务密码: ')
+#dwsy2_hbox = uiBase._ui_addClass(bkg,uiBase.dwsy2name,'平台账号: ','平台密码: ')
 
 #初始化 读取用户名 密码 模块
 def _zkinit():
-    if(os.path.exists(classesmanager.zk_usrRecordpath)):
-        record = classesmanager.zk_ReadRecord()
-        uiBase._selectboxes[zkname][uiBase._USRTXT].SetValue(record[0])
-        uiBase._selectboxes[zkname][uiBase._PSWDTXT].SetValue(record[1])
+    if(os.path.exists(zk_classesmanager.zk_usrRecordpath)):
+        record = zk_classesmanager.zk_ReadRecord()
+        uiBase._currentusr[uiBase.zkname] = []
+        uiBase._currentusr[uiBase.zkname].append(record[0])
+        uiBase._currentusr[uiBase.zkname].append(record[1])
         return 1
     return 0
 
+def _dwsy2_init():
+    if(os.path.exists(dwsy2_classesmanager.dwsy2_usrRecordpath)):
+        record = dwsy2_classesmanager.dwsy2_ReadRecord()
+        uiBase._currentusr[uiBase.dwsy2name] = []
+        uiBase._currentusr[uiBase.dwsy2name].append(record[0])
+        uiBase._currentusr[uiBase.dwsy2name].append(record[1])
+        return 1
+    return 0
 
+def _ks_init():
+    if(os.path.exists(ks_classesmanager.ks_usrRecordpath)):
+        record = ks_classesmanager.ks_ReadRecord()
+        uiBase._currentusr[uiBase.ksname] = []
+        uiBase._currentusr[uiBase.ksname].append(record[0])
+        uiBase._currentusr[uiBase.ksname].append(record[1])
+        return 1
+    return 0
 
 def init():
     #判断是否可以search
     judge = 1
     judge = _zkinit()
-    if(judge):
-        Search(0)
+    judge = _dwsy2_init()
+    judge = _ks_init()
+
+
 
 #写记录模块
-def writeRecprd():
-    classesmanager.zk_WriteRecord(
-        uiBase._selectboxes[zkname][uiBase._USRTXT].GetValue(), uiBase._selectboxes[zkname][uiBase._PSWDTXT].GetValue()
-    )
+def writeRecord():
+    if((uiBase.zkname in uiBase._currentusr) and ([] != uiBase._currentusr[uiBase.zkname])):
+        zk_classesmanager.zk_WriteRecord(
+            uiBase._currentusr[uiBase.zkname][uiBase._USRSTR], uiBase._currentusr[uiBase.zkname][uiBase._PSWDSTR]
+        )
+    if ((uiBase.dwsy2name in uiBase._currentusr) and ([] != uiBase._currentusr[uiBase.dwsy2name])):
+        dwsy2_classesmanager.dwsy2_WriteRecord(
+            uiBase._currentusr[uiBase.dwsy2name][uiBase._USRSTR], uiBase._currentusr[uiBase.dwsy2name][uiBase._PSWDSTR]
+        )
+    if ((uiBase.ksname in uiBase._currentusr) and ([] != uiBase._currentusr[uiBase.ksname])):
+        ks_classesmanager.ks_WriteRecord(
+            uiBase._currentusr[uiBase.ksname][uiBase._USRSTR], uiBase._currentusr[uiBase.ksname][uiBase._PSWDSTR]
+        )
 
 def _Search(searchweek):
     for i in range(1, 13):
         for j in range(1, 8):
             uiBase._boxes[i][j].SetValue('')
-    uiBase.zk_Search(
-        searchweek,uiBase._selectboxes[zkname][uiBase._USRTXT].GetValue(),uiBase._selectboxes[zkname][uiBase._PSWDTXT].GetValue())
-    writeRecprd()
+    uiBase.__Search(searchweek)
+    writeRecord()
 
 def Search(event):
-    searchweek = classesmanager.Get_thiswweek()
-    b1_weekTXT.SetValue(str(searchweek))
+    searchweek = zk_classesmanager.Get_thiswweek()
+    if('' != b1_weekTXT.GetValue()):
+        searchweek = int(b1_weekTXT.GetValue())
+    else:
+        b1_weekTXT.SetValue(str(searchweek))
     _Search(searchweek)
 
 def UpSearch(event):
-    searchweek = classesmanager.Get_thiswweek()
+    searchweek = zk_classesmanager.Get_thiswweek()
     if ('' != b1_weekTXT.GetValue()):
         searchweek = int(b1_weekTXT.GetValue()) + 1
     b1_weekTXT.SetValue(str(searchweek))
     _Search(searchweek)
 
 def DownSearch(event):
-    searchweek = classesmanager.Get_thiswweek()
+    searchweek = zk_classesmanager.Get_thiswweek()
     if ('' != b1_weekTXT.GetValue()):
         searchweek = int(b1_weekTXT.GetValue()) - 1
         if(searchweek <= 0):
@@ -74,12 +107,19 @@ def DownSearch(event):
     b1_weekTXT.SetValue(str(searchweek))
     _Search(searchweek)
 
+def SelectClass(event):
+    select_dia = uiBase.SelClassDia()
+    select_dia.Show()
 
 
 hbox1 = wx.BoxSizer()
+b1_selectBtN = wx.Button(bkg,label='select')
+b1_selectBtN.Bind(wx.EVT_BUTTON, SelectClass)
+
 b1_searchBTN = wx.Button(bkg,label='search')
 b1_searchBTN.SetBackgroundColour('Green')
 b1_searchBTN.Bind(wx.EVT_BUTTON, Search)
+b1_searchBTN.SetDefault()
 
 b1_weekupBTN = wx.Button(bkg,label='up')
 b1_weekupBTN.Bind(wx.EVT_BUTTON, UpSearch)
@@ -91,6 +131,7 @@ b1_weekTXT = wx.TextCtrl(bkg)
 b1_weeklable = wx.StaticText(bkg,label="周",style=wx.ALIGN_BOTTOM)
 b1_weeklable.SetBackgroundColour('WHEAT')
 
+hbox1.Add(b1_selectBtN,flag = wx.ALL | wx.EXPAND,proportion = 0)
 hbox1.Add(b1_searchBTN,flag = wx.ALL | wx.EXPAND,proportion = 1)
 hbox1.Add(b1_weekupBTN,flag = wx.ALL|wx.EXPAND,proportion = 0)
 hbox1.Add(b1_weekdnBTN,flag = wx.ALL|wx.EXPAND,proportion = 0)
@@ -142,13 +183,15 @@ for i in range(1,13):
 
 total_vbox = wx.BoxSizer(wx.VERTICAL)
 total_vbox.Add(hbox1,flag = wx.EXPAND,proportion = 0)
-total_vbox.Add(zk_hbox,flag = wx.EXPAND, proportion = 0)
+#total_vbox.Add(zk_hbox,flag = wx.EXPAND, proportion = 0)
+#total_vbox.Add(dwsy2_hbox,flag = wx.EXPAND, proportion = 0)
 total_vbox.Add(hbox2,flag = wx.EXPAND,proportion = 0)
 total_vbox.Add(vbox,flag = wx.EXPAND,proportion = 1,)
 
 bkg.SetSizer(total_vbox)
 
 init()
+
 
 win.Show()
 
